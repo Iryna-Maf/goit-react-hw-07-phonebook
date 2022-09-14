@@ -1,5 +1,4 @@
-import Notiflix from 'notiflix';
-
+import { useEffect } from 'react';
 import FormAddPhone from './FormAddPhone/FormAddPhone';
 import Contacts from './Contacts/Contacts';
 import Filter from './Filter/Filter';
@@ -7,47 +6,54 @@ import Filter from './Filter/Filter';
 import s from './App.module.css';
 
 import { useSelector, useDispatch } from 'react-redux';
-import todosActions from 'redux/contacts/todos-actions';
 
-import { filterStore, itemsStore } from 'redux/contacts/todos-selector';
+import {
+  fetchContacts,
+  deleteContacts,
+  addItems,
+} from 'redux/contacts/contacts-operations';
+import { addFilter } from 'redux/filter/filter-actions';
+import { getContactsList } from '../redux/contacts/contacts-selector';
+import { getFilter } from '../redux/filter/filter-selector';
 
 function App() {
   const dispatch = useDispatch();
-  const contactsArr = useSelector(itemsStore);
-  const filterValue = useSelector(filterStore);
+  const { loading } = useSelector(getContactsList);
+  const filter = useSelector(getFilter);
 
-  const submitDataForm = data => {
-    const { name, number } = data;
-    if (contactsArr.find(el => el.name === name || el.number === number)) {
-      Notiflix.Report.warning(
-        `Warning`,
-        `${name} or ${number} is already in cotacts`,
-        'Okay'
-      );
-      return;
-    }
-    Notiflix.Notify.success('You have a new Contact');
+  useEffect(() => {
+    dispatch(fetchContacts());
+  }, [dispatch]);
 
-    dispatch(todosActions.addContact(name, number));
-  };
-
-  const filterState = () => {
-    return contactsArr.filter(el =>
-      el.name.toLowerCase().includes(filterValue.toLowerCase())
+  const phoneList = useSelector(store => {
+    const filteredContact = store.contacts.items.filter(item =>
+      item.name.toLowerCase().includes(store.filter.toLocaleLowerCase())
     );
+    return filteredContact;
+  });
+
+  const onAddContact = data => {
+    const action = addItems(data);
+    dispatch(action);
   };
-  const renderFiterItem = filterState();
+
+  const onDelContact = id => {
+    const action = deleteContacts(id);
+    dispatch(action);
+  };
+
+  const onChangeFilter = e => {
+    const action = addFilter(e.currentTarget.value);
+    dispatch(action);
+  };
 
   return (
-    <div className={s.container}>
-      <h1 className={s.title}>Phonebook</h1>
-      <FormAddPhone onSubmit={submitDataForm} />
-      <h2 className={s.title}>Contacts</h2>
-      <Filter />
-      {contactsArr.length !== 0 && (
-        <Contacts renderFilterContacts={renderFiterItem} />
-      )}
-    </div>
+    <>
+      <FormAddPhone className={s.container} onSubmit={onAddContact} />
+      <Filter value={filter} onChange={onChangeFilter} />
+      {loading && <p>...Loading</p>}
+      <Contacts phoneList={phoneList} onDeletePhoneListItem={onDelContact} />
+    </>
   );
 }
 
